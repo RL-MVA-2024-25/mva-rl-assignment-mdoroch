@@ -17,7 +17,6 @@ from env_hiv import HIVPatient
 
 import numpy as np
 import os
-import pickle
 from gymnasium.wrappers import TimeLimit
 from env_hiv import HIVPatient
 from tqdm import tqdm
