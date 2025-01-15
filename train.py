@@ -21,7 +21,6 @@ import pickle
 from gymnasium.wrappers import TimeLimit
 from env_hiv import HIVPatient
 from tqdm import tqdm
-from multiprocessing import Pool
 
 import torch
 import torch.nn as nn
