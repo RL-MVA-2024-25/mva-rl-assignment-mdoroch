@@ -6,5 +6,4 @@ matplotlib
 IPython
 pytest
 tqdm
-multiprocessing
 pickle
