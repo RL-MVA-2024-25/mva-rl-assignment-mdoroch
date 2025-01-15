@@ -100,7 +100,10 @@ class DQNNetwork(nn.Module):
         self.fc5 = nn.Linear(256, 256)
         self.relu5 = nn.ReLU()
         
-        self.fc6 = nn.Linear(256, action_size)        
+        self.fc6 = nn.Linear(256, 256)
+        self.relu6 = nn.ReLU()
+        
+        self.fc7 = nn.Linear(256, action_size)        
     def forward(self, x):
         # print(x.shape, self.fc1(x).shape)
         x = self.relu1(self.fc1(x))
@@ -108,7 +111,8 @@ class DQNNetwork(nn.Module):
         x = self.relu3(self.fc3(x))
         x = self.relu4(self.fc4(x))
         x = self.relu5(self.fc5(x))
-        return self.fc6(x)
+        x = self.relu6(self.fc6(x))
+        return self.fc7(x)
     
 class ProjectAgent:
     
@@ -186,12 +190,84 @@ class ProjectAgent:
         for target_param, local_param in zip(self.target_model.parameters(), self.model.parameters()):
             target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
 
-    def save(self, filepath = f'model_best_2_v8_179_19792695857.256184.pth'):
+    def save(self, filepath = f'model_best_4_v10_158_21616151552.379322.pth'):
 
         torch.save(self.model.state_dict(), filepath)
 
-    def load(self, filepath = f'model_best_2_v8_179_19792695857.256184.pth'):
+    def load(self, filepath = f'model_best_4_v10_158_21616151552.379322.pth'):
 
         self.model.load_state_dict(torch.load(filepath, map_location = torch.device('cpu')))
         self.model.eval()  
         
+    def train(self):
+
+
+        episodes=500
+        
+        env_1 = TimeLimit(env=HIVPatient(domain_randomization=False), max_episode_steps=200)
+        env_2 = TimeLimit(env=HIVPatient(domain_randomization=True), max_episode_steps=200)
+        
+        env = env_1
+        state, _ = env.reset()
+        
+        rews = []
+        loss_history_ = [] 
+        best_reward = 0
+        
+        total_reward = 0
+        episode, step = 0, 0
+        
+        while episode < 500:
+            
+            if step > 700:  #####!!!!!!!!!!!!!
+                self.epsilon = max(0.15, self.epsilon - 0.00005)
+            
+            
+            if np.random.rand() < self.epsilon:
+                action = self.random_action()
+            else:
+                action = self.act(state)
+                
+            next_state, reward, done, trunc, _ = env.step(action)
+            
+            self.remember(state, action, reward, next_state, done)
+            
+            total_reward += reward
+            
+            for _ in range(5):
+                self.replay()
+                
+            if step%700 == 0:
+                self.update_target_model()
+                
+            step += 1
+            if done or trunc:
+
+                test_score = evaluate_HIV(agent=self, nb_episode=1)
+                test_score_2 = evaluate_HIV_population(agent=self, nb_episode=1)
+
+
+                env = env_1 if bool(np.random.randint(2)) else env_2
+                
+                state, _ = env.reset()
+                
+                rews.append(total_reward)
+                
+                total_score = test_score + test_score_2
+                
+                if total_score >= best_reward:
+                    self.save(filepath = f'model_best_4_v10_{episode}_{test_score}.pth')
+                    best_reward = total_score
+                
+                loss_history_.append(np.array(self.loss_history).mean())
+
+                plot_rewards(rews, loss_history_)
+                print(f"Episode {episode + 1}, Total Reward: {total_reward:.2f}, Epsilon: {self.epsilon:.2f}, Test Score: {test_score} // {test_score_2}")
+                total_reward = 0
+                
+                episode += 1
+                # self.loss_history = []
+                
+            else:
+                state = next_state
+
