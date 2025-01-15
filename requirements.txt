@@ -6,4 +6,3 @@ matplotlib
 IPython
 pytest
 tqdm
-pickle
